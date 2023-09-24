@@ -44,8 +44,8 @@ void *thread_scale_up(void *inutilise) {
 		image_t* image2 = filter_scale_up(image1, 2);
 		queue_push(scale_up_queue, image2);
 		image_destroy(image1);
-		printf("Scale-up");
 	}
+	printf("\n Fin de thread_scale_up\n");
 	pthread_exit(NULL);
 }
 
@@ -64,8 +64,8 @@ void *thread_sharpen(void *inutilise) {
 		image3 = filter_sharpen(image2);
 		queue_push(sharpen_queue, image3);
 		image_destroy(image2);
-		printf("Sharpen");
 	}
+	printf("\n Fin de thread_sharpen\n");
 	pthread_exit(NULL);
 }
 
@@ -84,8 +84,8 @@ void *thread_sobel(void *inutilise) {
 		image4 = filter_sobel(image3);
 		queue_push(sobel_queue, image4);
 		image_destroy(image3);
-		printf("Sobel");
 	}
+	printf("\n Fin de thread_sobel\n");
 	pthread_exit(NULL);
 }
 
@@ -100,8 +100,8 @@ void *thread_save(void *image_dir) {
 		image4 = queue_pop(sobel_queue);
 		image_dir_save(image_dir, image4);
 		image_destroy(image4);
-		printf("save");
 	}
+	printf("\n Fin de thread_save\n");
 	pthread_exit(NULL);
 }
 
@@ -153,4 +153,3 @@ Pratiquement la même performance entre 7 threads et les 14 threads actuels (10 
 */
 	return 0;
 }
-
