@@ -12,7 +12,7 @@ int pipeline_tbb(image_dir_t* image_dir) {
     std::cout << "TBB";
 
     parallel_pipeline(48, 
-        make_filter<void, image_t*>(tbb::filter::serial, [&](tbb::flow_control& fc) -> image_t* {
+        make_filter<void, image_t*>(tbb::filter::parallel, [&](tbb::flow_control& fc) -> image_t* {
             image_t* image;
             image = image_dir_load_next((image_dir_t*)image_dir);
             if (image == NULL) {
