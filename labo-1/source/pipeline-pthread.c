@@ -26,7 +26,7 @@ void *thread_load(void *image_dir) {
 		queue_push(load_queue, image);
 		printf(".");
 	}
-	printf("\n Fin de thread_load\n");
+	// printf("\n Fin de thread_load\n");
 	pthread_exit(NULL);
 }
 
@@ -44,7 +44,7 @@ void *thread_scale_up(void *inutilise) {
 		image_t* image2 = filter_scale_up(image1, 2);
 		queue_push(scale_up_queue, image2);
 		image_destroy(image1);
-		printf("Scale-up");
+		// printf("Scale-up");
 	}
 	pthread_exit(NULL);
 }
@@ -64,7 +64,7 @@ void *thread_sharpen(void *inutilise) {
 		image3 = filter_sharpen(image2);
 		queue_push(sharpen_queue, image3);
 		image_destroy(image2);
-		printf("Sharpen");
+		// printf("Sharpen");
 	}
 	pthread_exit(NULL);
 }
@@ -84,7 +84,7 @@ void *thread_sobel(void *inutilise) {
 		image4 = filter_sobel(image3);
 		queue_push(sobel_queue, image4);
 		image_destroy(image3);
-		printf("Sobel");
+		// printf("Sobel");
 	}
 	pthread_exit(NULL);
 }
@@ -100,12 +100,15 @@ void *thread_save(void *image_dir) {
 		image4 = queue_pop(sobel_queue);
 		image_dir_save(image_dir, image4);
 		image_destroy(image4);
-		printf("save");
+		// printf("save");
+		printf(".");
+        fflush(stdout);
 	}
 	pthread_exit(NULL);
 }
 
 int pipeline_pthread(image_dir_t* image_dir) {
+	printf("PTHREAD");
 	pthread_t thLoad, 
 			thScaleUp1, thScaleUp2, 
 			thSharpen1, thSharpen2, 
@@ -127,10 +130,10 @@ int pipeline_pthread(image_dir_t* image_dir) {
 	pthread_create(&thSobel3, NULL, thread_sobel, NULL);
 	pthread_create(&thSobel4, NULL, thread_sobel, NULL);
 	pthread_create(&thSave1, NULL, thread_save, (void*) image_dir);
-	pthread_create(&thSave2, NULL, thread_save, (void*) image_dir);
-	pthread_create(&thSave3, NULL, thread_save, (void*) image_dir);
-	pthread_create(&thSave4, NULL, thread_save, (void*) image_dir);
-	pthread_create(&thSave5, NULL, thread_save, (void*) image_dir);
+	// pthread_create(&thSave2, NULL, thread_save, (void*) image_dir);
+	// pthread_create(&thSave3, NULL, thread_save, (void*) image_dir);
+	// pthread_create(&thSave4, NULL, thread_save, (void*) image_dir);
+	// pthread_create(&thSave5, NULL, thread_save, (void*) image_dir);
 
 /*
 */
@@ -144,10 +147,10 @@ int pipeline_pthread(image_dir_t* image_dir) {
 	pthread_join(thSobel3, NULL);
 	pthread_join(thSobel4, NULL);
 	pthread_join(thSave1, NULL);
-	pthread_join(thSave2, NULL);
-	pthread_join(thSave3, NULL);
-	pthread_join(thSave4, NULL);
-	pthread_join(thSave5, NULL);
+	// pthread_join(thSave2, NULL);
+	// pthread_join(thSave3, NULL);
+	// pthread_join(thSave4, NULL);
+	// pthread_join(thSave5, NULL);
 /*
 Pratiquement la même performance entre 7 threads et les 14 threads actuels (10 secondes plus rapide seulement)
 */

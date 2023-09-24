@@ -6,6 +6,7 @@
 #include "pipeline.h"
 
 int pipeline_serial(image_dir_t* image_dir) {
+    printf("SERIAL");
     while (1) {
         image_t* image1 = image_dir_load_next(image_dir);
         if (image1 == NULL) {
