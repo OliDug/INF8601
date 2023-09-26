@@ -16,9 +16,8 @@ extern clang::ast_matchers::DeclarationMatcher filterInherits;
 extern clang::ast_matchers::DeclarationMatcher functorDeclaration;
 
 class FilterCallback : public clang::ast_matchers::MatchFinder::MatchCallback {
-  public:
-    virtual void
-    run(const clang::ast_matchers::MatchFinder::MatchResult& result) override;
+   public:
+    virtual void run(const clang::ast_matchers::MatchFinder::MatchResult& result) override;
 
     virtual ~FilterCallback() = default;
 
@@ -27,16 +26,19 @@ class FilterCallback : public clang::ast_matchers::MatchFinder::MatchCallback {
      */
     bool usesLambdas() const;
 
-    size_t lambdaCount() const { return lambda_count; }
-    size_t functorCount() const { return functor_count; }
+    size_t lambdaCount() const {
+        return lambda_count;
+    }
+    size_t functorCount() const {
+        return functor_count;
+    }
 
     /** \fn assertVariant
      * \brief Checks if the variant is respected
      */
     int assertVariant(unsigned int variant) const;
 
-  private:
-    size_t lambda_count = 0u;
+   private:
+    size_t lambda_count  = 0u;
     size_t functor_count = 0u;
 };
-
