@@ -10,16 +10,6 @@ queue_t* scale_up_queue;
 queue_t* sharpen_queue;
 queue_t* sobel_queue;
 
-/* bool load_done = false;
-bool scale_up_done = false;
-bool sharpen_done = false;
-bool sobel_done = false; */
-
-/* pthread_mutex_t mutex_load;
-pthread_mutex_t mutex_scale_up;
-pthread_mutex_t mutex_sharpen;
-pthread_mutex_t mutex_sobel; */
-
 void* thread_load(void* image_dir) {
     image_t* image;
     while (1) {
@@ -29,28 +19,13 @@ void* thread_load(void* image_dir) {
             break;
         }
 	}
-	//printf("\n Fin de thread_load\n");
 	pthread_exit(NULL);
 }
 
 void *thread_scale_up(void *inutilise) {
 	image_t* image1;
-	//size_t queue_used;
-	//bool canStop = false;
+	
 	while(1) {
-		/* pthread_mutex_lock(&load_queue->mutex);
-		queue_used = load_queue->used;
-		pthread_mutex_unlock(&load_queue->mutex);
-		if (queue_used == 0) {
-			canStop = load_done;
-			pthread_mutex_lock(&mutex_load);
-			pthread_mutex_unlock(&mutex_load);
-			if (canStop == true) {
-				break;
-			}
-			continue;
-		} */
-
 		image1 = queue_pop(load_queue);
 		if (image1 == NULL) {
 			queue_push(load_queue, image1);
@@ -60,28 +35,13 @@ void *thread_scale_up(void *inutilise) {
 		queue_push(scale_up_queue, image2);
 		image_destroy(image1);
 	}
-	//printf("\n Fin de thread_scale_up\n");
 	pthread_exit(NULL);
 }
 
 void *thread_sharpen(void *inutilise) {
 	image_t* image2;
 	image_t* image3;
-	//size_t queue_used;
-	//bool canStop = false;
 	while(1) {
-		/* pthread_mutex_lock(&scale_up_queue->mutex);
-		queue_used = scale_up_queue->used;
-		pthread_mutex_unlock(&scale_up_queue->mutex);
-		if (queue_used == 0) {
-			canStop = scale_up_done;
-			pthread_mutex_lock(&mutex_scale_up);
-			pthread_mutex_unlock(&mutex_scale_up);
-			if (canStop == true) {
-				break;
-			}
-			continue;
-		} */
 		image2 = queue_pop(scale_up_queue);
 		if (image2 == NULL) {
 			printf("Sharpen got NULL\n");
@@ -92,28 +52,13 @@ void *thread_sharpen(void *inutilise) {
 		queue_push(sharpen_queue, image3);
 		image_destroy(image2);
 	}
-	//printf("\n Fin de thread_sharpen\n");
 	pthread_exit(NULL);
 }
 
 void *thread_sobel(void *inutilise) {
 	image_t* image3;
 	image_t* image4;
-	//size_t queue_used;
-	//bool canStop = false;
 	while(1) {
-		/* pthread_mutex_lock(&sharpen_queue->mutex);
-		queue_used = sharpen_queue->used;
-		pthread_mutex_unlock(&sharpen_queue->mutex);
-		if (queue_used == 0) {
-			canStop = sharpen_done;
-			 pthread_mutex_lock(&mutex_sharpen);
-			pthread_mutex_unlock(&mutex_sharpen);
-			if (canStop == true) {
-				break;
-			}
-			continue;
-		} */
 		image3 = queue_pop(sharpen_queue);
 		if (image3 == NULL) {
 			queue_push(sharpen_queue, image3);
@@ -123,27 +68,12 @@ void *thread_sobel(void *inutilise) {
 		queue_push(sobel_queue, image4);
 		image_destroy(image3);
 	}
-	//printf("\n Fin de thread_sobel\n");
 	pthread_exit(NULL);
 }
 
 void *thread_save(void *image_dir) {
 	image_t* image4;
-	//size_t queue_used;
-	//bool canStop = false;
 	while(1) {
-		/* pthread_mutex_lock(&sobel_queue->mutex);
-		queue_used = sobel_queue->used;
-		pthread_mutex_unlock(&sobel_queue->mutex);
-		if (queue_used == 0) {
-			canStop = sobel_done;
-			pthread_mutex_lock(&mutex_sobel);
-			pthread_mutex_unlock(&mutex_sobel);
-			if (canStop == true) {
-				break;
-			}
-			continue;
-		} */
 		image4 = queue_pop(sobel_queue);
 		if (image4 == NULL) {
 			queue_push(sobel_queue, image4);
@@ -154,7 +84,6 @@ void *thread_save(void *image_dir) {
 		printf(".");
         fflush(stdout);
 	}
-	//printf("\n Fin de thread_save\n");
 	pthread_exit(NULL);
 }
 
@@ -162,21 +91,16 @@ int pipeline_pthread(image_dir_t* image_dir) {
     int i = 0;
 
 	const int num_thLoad    = 1;
-	const int num_thScaleUp = 6;
-	const int num_thSharpen = 14;
-	const int num_thSobel   = 16;
-	const int num_thSave    = 14;
+	const int num_thScaleUp = 13;
+	const int num_thSharpen = 26;
+	const int num_thSobel   = 32;
+	const int num_thSave    = 24;
 
     pthread_t thLoad[num_thLoad];
     pthread_t thScaleUp[num_thScaleUp];
     pthread_t thSharpen[num_thSharpen];
     pthread_t thSobel[num_thSobel];
     pthread_t thSave[num_thSave];
-
-	/* pthread_mutex_init(&mutex_load, NULL);
-	pthread_mutex_init(&mutex_scale_up, NULL);
-	pthread_mutex_init(&mutex_sharpen, NULL);
-	pthread_mutex_init(&mutex_sobel, NULL); */
 
     load_queue     = queue_create(69120000);  // 100 images max (691200 bytes par image)
     scale_up_queue = queue_create(6912000);
@@ -203,37 +127,24 @@ int pipeline_pthread(image_dir_t* image_dir) {
         pthread_join(thLoad[i], NULL);
 		printf("Fin %de thread load\n", i+1);
     }
-	/* load_done = true;
-	pthread_mutex_lock(&mutex_load);
-	pthread_mutex_unlock(&mutex_load); */
 
     for (i = 0; i < num_thScaleUp; i++) {
         pthread_join(thScaleUp[i], NULL);
 		printf("Fin %de thread scale up\n", i+1);
     }
 	queue_push(scale_up_queue, NULL);
-	printf("Pushed NULL into sharpen_queue\n");
-	/*scale_up_done = true;
-	pthread_mutex_lock(&mutex_scale_up);
-	pthread_mutex_unlock(&mutex_scale_up); */
 
     for (i = 0; i < num_thSharpen; i++) {
         pthread_join(thSharpen[i], NULL);
 		printf("Fin %de thread sharpen\n", i+1);
     }
 	queue_push(sharpen_queue, NULL);
-	/*sharpen_done = true;
-	pthread_mutex_lock(&mutex_sharpen);
-	pthread_mutex_unlock(&mutex_sharpen); */
 
     for (i = 0; i < num_thSobel; i++) {
         pthread_join(thSobel[i], NULL);
 		printf("Fin %de thread sobel\n", i+1);
     }
 	queue_push(sobel_queue, NULL);
-	/*sobel_done = true;
-	pthread_mutex_lock(&mutex_sobel);
-	pthread_mutex_unlock(&mutex_sobel); */
 
     for (i = 0; i < num_thSave; i++) {
         pthread_join(thSave[i], NULL);
