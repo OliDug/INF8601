@@ -51,9 +51,52 @@ int sinoscope_opencl_init(sinoscope_opencl_t* opencl, cl_device_id opencl_device
 
 void sinoscope_opencl_cleanup(sinoscope_opencl_t* opencl)
 {
-
+	clReleaseMemObject(opencl->buffer);
+	clReleaseKernel(opencl->kernel);
+	clReleaseCommandQueue(opencl->queue);
+	clReleaseContext(opencl->context);
 }
 
 int sinoscope_image_opencl(sinoscope_t* sinoscope) {
-	return -1;
+	cl_int error = 0;
+
+	error = clSetKernelArg(sinoscope->opencl->kernel, 0, sizeof(int), (void *)&sinoscope->width);
+	error = clSetKernelArg(sinoscope->opencl->kernel, 1, sizeof(int), (void *)&sinoscope->height);
+	error = clSetKernelArg(sinoscope->opencl->kernel, 2, sizeof(float), (void *)&sinoscope->dx);
+	error = clSetKernelArg(sinoscope->opencl->kernel, 3, sizeof(float), (void *)&sinoscope->dy);
+	error = clSetKernelArg(sinoscope->opencl->kernel, 4, sizeof(int), (void *)&sinoscope->taylor);
+	error = clSetKernelArg(sinoscope->opencl->kernel, 5, sizeof(float), (void *)&sinoscope->phase0);
+	error = clSetKernelArg(sinoscope->opencl->kernel, 6, sizeof(float), (void *)&sinoscope->phase1);
+	error = clSetKernelArg(sinoscope->opencl->kernel, 7, sizeof(float), (void *)&sinoscope->time);
+	error = clSetKernelArg(sinoscope->opencl->kernel, 8, sizeof(int), (void *)&sinoscope->interval);
+	error = clSetKernelArg(sinoscope->opencl->kernel, 9, sizeof(float), (void *)&sinoscope->interval_inverse);
+	error = clSetKernelArg(sinoscope->opencl->kernel, 10, sizeof(cl_mem), (void *)&sinoscope->opencl->buffer);
+
+	/*for (int i = 0; i < sinoscope->width; i++) {
+		for (int j = 0; j < sinoscope->height; j++){
+			error = clSetKernelArg(sinoscope->opencl->kernel, 0, sizeof(int), (void *)&i);
+			error = clSetKernelArg(sinoscope->opencl->kernel, 0, sizeof(int), (void *)&j);
+
+		}
+	}*/
+
+	// Execute the OpenCL kernel on the list
+    size_t global_item_size = sinoscope->height * sinoscope->width; // Process the entire image in one go
+    size_t local_item_size = 1; // Divide work items into groups of 1
+    error = clEnqueueNDRangeKernel(sinoscope->opencl->queue, sinoscope->opencl->kernel,
+        1 /* work dimensions */, NULL /* global work offset */,
+        &global_item_size /* global work size */, &local_item_size /* local work size */,
+        0 /* number of events in wait list */, NULL /* event wait list */, NULL /* event */
+	);
+
+	// Read the memory buffer C on the device to the local variable C
+    error = clEnqueueReadBuffer(sinoscope->opencl->queue,
+        sinoscope->opencl->buffer,
+        CL_TRUE,
+        0,
+        sinoscope->buffer_size,
+        sinoscope->buffer,
+        0,
+        NULL,
+        NULL);
 }
