@@ -10,6 +10,25 @@ int heatsim_init(heatsim_t* heatsim, unsigned int dim_x, unsigned int dim_y) {
      *       Le communicateur doit être périodique. Le communicateur
      *       cartésien est périodique en X et Y.
      */
+
+    /*
+    MPI_Datatype HeatsimType;
+
+    MPI_Datatype HeatsimFieldTypes[8] = 
+    { MPI_Comm, MPI_INT, MPI_INT, MPI_INT, MPI_INT, MPI_INT, MPI_INT, MPI_INT };
+
+    int HeatsimFieldLength[8] = { 1, 1, 1, 1, 1, 1, 1, 2 };
+
+    MPI_Aint HeatsimFieldPosition[8] = { 
+        offsetof(heatsim_t, communicator), offsetof(heatsim_t, rank_count), offsetof(heatsim_t, rank), 
+        offsetof(heatsim_t, rank_north_peer), offsetof(heatsim_t, rank_south_peer), offsetof(heatsim_t, rank_east_peer),
+        offsetof(heatsim_t, rank_west_peer), offsetof(heatsim_t, coordinates)
+    };
+
+    MPI_Type_create_struct(8, HeatsimFieldLength, HeatsimFieldPosition, HeatsimFieldTypes, &HeatsimType);
+    MPI_Type_commit(&HeatsimType);
+    */
+
     // heatsim->communicator = 
     int dims[2] = {dim_x, dim_y};
     int periods[2] = {1, 1};
@@ -30,16 +49,16 @@ int heatsim_init(heatsim_t* heatsim, unsigned int dim_x, unsigned int dim_y) {
 
     // int rank_south_peer;
     coords[1] -= 2;
-    MPI_Cart_rank(heatsim->communicator, heatsim->coordinates, &heatsim->rank_south_peer);
+    MPI_Cart_rank(heatsim->communicator, coords, &heatsim->rank_south_peer);
     
     // int rank_east_peer;
     coords[1] += 1;
     coords[0] += 1;
-    MPI_Cart_rank(heatsim->communicator, heatsim->coordinates, &heatsim->rank_east_peer);
+    MPI_Cart_rank(heatsim->communicator, coords, &heatsim->rank_east_peer);
     
     // int rank_west_peer;
     coords[0] -= 2;
-    MPI_Cart_rank(heatsim->communicator, heatsim->coordinates, &heatsim->rank_west_peer);
+    MPI_Cart_rank(heatsim->communicator, coords, &heatsim->rank_west_peer);
     
     return 1;
 fail_exit:
