@@ -41,7 +41,7 @@ int heatsim_init(heatsim_t* heatsim, unsigned int dim_x, unsigned int dim_y) {
     MPI_Comm_size(MPI_COMM_WORLD, &heatsim->rank_count);
 
     // int coordinates[2];
-    MPI_Cart_coords(heatsim->communicator, heatsim->rank, heatsim->rank_count, heatsim->coordinates);
+    MPI_Cart_coords(heatsim->communicator, heatsim->rank, 2, heatsim->coordinates);
 
     // int rank_north_peer;
     int coords[2] = {heatsim->coordinates[0], heatsim->coordinates[1]+1};
@@ -61,9 +61,13 @@ int heatsim_init(heatsim_t* heatsim, unsigned int dim_x, unsigned int dim_y) {
     MPI_Cart_rank(heatsim->communicator, coords, &heatsim->rank_west_peer);
     
     return 1;
-fail_exit:
-    return -1;
 }
+
+typedef struct grid_parameters {
+    unsigned int width;
+    unsigned int height;
+    unsigned int padding;
+} grid_param_t;
 
 int heatsim_send_grids(heatsim_t* heatsim, cart2d_t* cart) {
     /*
@@ -79,8 +83,41 @@ int heatsim_send_grids(heatsim_t* heatsim, cart2d_t* cart) {
      *       Utilisez `cart2d_get_grid` pour obtenir la `grid` à une coordonnée.
      */
 
-fail_exit:
-    return -1;
+    MPI_Datatype gridParamType;
+    MPI_Datatype paramFieldTypes[3] = {
+        MPI_UNSIGNED, MPI_UNSIGNED, MPI_UNSIGNED
+    };
+    int paramFieldLength[3] = {1, 1, 1};
+    MPI_Aint paramFieldPosition[3] = { 
+        offsetof(grid_param_t, width), offsetof(grid_param_t, height), offsetof(grid_param_t, padding) 
+    };
+
+    MPI_Type_create_struct(3, paramFieldLength, paramFieldPosition, paramFieldTypes, &gridParamType);
+    MPI_Type_commit(&gridParamType);
+
+    MPI_Datatype gridDataType;
+    MPI_Datatype dataFieldTypes[1] = { MPI_DOUBLE };
+    MPI_Aint dataFieldPosition[1] = { 0 };
+
+    int coords[2];
+    grid_t* grid;
+    grid_param_t grid_param;
+    MPI_Request request;
+    for(int rank = 1; rank < heatsim->rank_count; rank++) {
+        MPI_Cart_coords(heatsim->communicator, rank, 2, coords);
+        grid = cart2d_get_grid(cart, coords[0], coords[1]);
+        grid_param.width = grid->width;
+        grid_param.height = grid->height;
+        grid_param.padding = grid->padding;
+        MPI_Isend(&grid_param, 1, gridParamType, rank, 0, heatsim->communicator, &request);
+
+        int dataFieldLength[1] = { grid->width * grid->height };
+        MPI_Type_create_struct(1, dataFieldLength, dataFieldPosition, dataFieldTypes, &gridDataType);
+        MPI_Type_commit(&gridDataType);
+        MPI_Isend(grid->data, 1, gridDataType, rank, 0, heatsim->communicator, &request);
+    }
+    
+    return 1;
 }
 
 grid_t* heatsim_receive_grid(heatsim_t* heatsim) {
@@ -92,7 +129,7 @@ grid_t* heatsim_receive_grid(heatsim_t* heatsim) {
      *
      *       Utilisez `grid_create` pour allouer le `grid` à retourner.
      */
-
+    //MPI_Irecv
 fail_exit:
     return NULL;
 }
