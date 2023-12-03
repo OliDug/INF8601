@@ -230,7 +230,7 @@ int heatsim_run(char* input, char* output, unsigned int dim_x, unsigned int dim_
         printf("[%d] receiving results from other ranks\n", heatsim.rank);
 
         if (heatsim.rank_count > 1) {
-            if (heatsim_receive_results(&heatsim, cart)) {
+            if (heatsim_receive_results(&heatsim, cart) < 0) {
                 LOG_ERROR("simulation failed to receive results (rank 0)");
                 goto fail_destroy_heat_grid;
             }
@@ -254,14 +254,17 @@ int heatsim_run(char* input, char* output, unsigned int dim_x, unsigned int dim_
             LOG_ERROR("failed to save image (rank 0)");
             goto fail_destroy_heat_grid;
         }
+        // printf("ON EST LA rank = 0\n");
     } else {
+
+        // printf("ON EST LA rank = %d\n", heatsim.rank);
+
         grid_t* grid_no_padding = grid_clone_with_padding(current_grid, 0);
         if (grid_no_padding == NULL) {
             LOG_ERROR("failed to copy grid without padding");
             goto fail_destroy_heat_grid;
         }
 
-        printf("[%d] sending results to rank 0\n", heatsim.rank);
 
         status = heatsim_send_result(&heatsim, grid_no_padding);
         grid_destroy(grid_no_padding);
@@ -270,12 +273,14 @@ int heatsim_run(char* input, char* output, unsigned int dim_x, unsigned int dim_
             goto fail_destroy_heat_grid;
         }
 
-        printf("[%d] sent results to rank 0\n", heatsim.rank);
     }
 
     grid_destroy(heat_grid);
     grid_destroy(next_grid);
     grid_destroy(current_grid);
+
+
+    printf("%d sors de la boucle if/else\n", heatsim.rank);
 
     if (cart != NULL) {
         cart2d_destroy(cart);
