@@ -44,15 +44,18 @@ int heatsim_init(heatsim_t* heatsim, unsigned int dim_x, unsigned int dim_y) {
     MPI_Cart_coords(heatsim->communicator, heatsim->rank, 2, heatsim->coordinates);
 
     // int rank_north_peer;
-    int coords[2] = {heatsim->coordinates[0], heatsim->coordinates[1]+1};
+    int coords[2] = {heatsim->coordinates[0], heatsim->coordinates[1]-1};
     MPI_Cart_rank(heatsim->communicator, coords, &heatsim->rank_north_peer);
 
+    // TODO : inversion nord/sud
+    // https://www.codingame.com/playgrounds/47058/have-fun-with-mpi-in-c/mpi-process-topologies
+
     // int rank_south_peer;
-    coords[1] -= 2;
+    coords[1] += 2;
     MPI_Cart_rank(heatsim->communicator, coords, &heatsim->rank_south_peer);
     
     // int rank_east_peer;
-    coords[1] += 1;
+    coords[1] -= 1;
     coords[0] += 1;
     MPI_Cart_rank(heatsim->communicator, coords, &heatsim->rank_east_peer);
     
@@ -104,6 +107,11 @@ int heatsim_send_grids(heatsim_t* heatsim, cart2d_t* cart) {
     grid_t* grid;
     grid_param_t grid_param;
     MPI_Request request;
+    MPI_Status status;
+
+    // if (heatsim->rank_count == 1){
+    //     printf("HERE");
+    }
 
     for(int rank = 1; rank < heatsim->rank_count; rank++) {
         // Envoie de la requete (width, height, padding)
@@ -113,13 +121,14 @@ int heatsim_send_grids(heatsim_t* heatsim, cart2d_t* cart) {
         grid_param.height = grid->height;
         grid_param.padding = grid->padding;
         MPI_Isend(&grid_param, 1, gridParamType, rank, 0, heatsim->communicator, &request);
+        MPI_Wait(&request, &status);
 
         // Envoie de la requete (data)
         int dataFieldLength[1] = { grid->width * grid->height };
         MPI_Type_create_struct(1, dataFieldLength, dataFieldPosition, dataFieldTypes, &gridDataType);
         MPI_Type_commit(&gridDataType);
         MPI_Isend(grid->data, 1, gridDataType, rank, 0, heatsim->communicator, &request);
-
+        MPI_Wait(&request, &status);
         // TODO si ca marche pas : rajouter MPI_Wait
     }
     
@@ -226,9 +235,9 @@ int heatsim_exchange_borders(heatsim_t* heatsim, grid_t* grid) {
 
     double* gridCellDst; 
     double* gridCellSrc;
+
     int rank;
     
-
     int coords[2];
     MPI_Cart_coords(heatsim->communicator, heatsim->rank, 2, coords);
     // printf("%d, %d, %d\n", coords[0], coords[1], heatsim->rank);
@@ -240,35 +249,39 @@ int heatsim_exchange_borders(heatsim_t* heatsim, grid_t* grid) {
         for (int i = 0; i < grid->width; i++){
             // Echange Nord 
             gridCellDst = grid_get_cell(grid, i, -1);
-            gridCellSrc = grid_get_cell(grid, i, grid->height);
+            gridCellSrc = grid_get_cell(grid, i, grid->height-1);
             // memcpy(gridCellDst, gridCellSrc, 8); 
             // Copie le double mais fait un shallow copy
             // Affectation de double fait un deep copy
             *gridCellSrc = *gridCellDst;
 
             // Echange Sud 
-            gridCellDst = grid_get_cell(grid, i, grid->height+1);
+            gridCellDst = grid_get_cell(grid, i, grid->height);
             gridCellSrc = grid_get_cell(grid, i, 0);
             *gridCellSrc = *gridCellDst;
         }
 
         for (int i = 0; i < grid->height; i++){
             // Echange Est 
-            gridCellDst = grid_get_cell(grid, grid->width+1, i);
+            gridCellDst = grid_get_cell(grid, grid->width, i);
             gridCellSrc = grid_get_cell(grid, 0, i);
             *gridCellSrc = *gridCellDst;
 
             // Echange Ouest 
             gridCellDst = grid_get_cell(grid, -1, i);
-            gridCellSrc = grid_get_cell(grid, grid->width, i);
+            gridCellSrc = grid_get_cell(grid, grid->width-1, i);
             *gridCellSrc = *gridCellDst;
         }
 
-        printf("DAVID : Exchange finished (rank = 0)\n");
+        // printf("DAVID : Exchange finished (rank = 0)\n");
         return 1;
     }
 
-    // Échange de la bordure nord
+    // TODO if rank == 0 ??
+
+
+    // printf("PADDING %d %d \n", grid->width, grid->width_padded);
+    // Échange de la bordure nord, on envoie la bordure nord au nord
     rank = heatsim->rank_north_peer;
     for(int i = 0; i < grid->width; i++) {
         gridCell = grid_get_cell(grid, i, 0);
@@ -279,12 +292,12 @@ int heatsim_exchange_borders(heatsim_t* heatsim, grid_t* grid) {
     // Échange de la bordure sud
     rank = heatsim->rank_south_peer;
     for(int i = 0; i < grid->width; i++) {
-        gridCell = grid_get_cell(grid, i, grid->height);
-        MPI_Send(gridCell, 1, MPI_DOUBLE, rank, i, heatsim->communicator);
+        gridCell = grid_get_cell(grid, i, grid->height-1);
+        MPI_Send(gridCell, 1, MPI_DOUBLE, rank, i+ grid->width, heatsim->communicator);
     }
 
     
-    double cellVector[grid->height+1];
+    double cellVector[grid->height];
     MPI_Datatype doubleVector;
     MPI_Type_vector(grid->height, 1, 1, MPI_DOUBLE, &doubleVector);
     MPI_Type_commit(&doubleVector);
@@ -299,7 +312,7 @@ int heatsim_exchange_borders(heatsim_t* heatsim, grid_t* grid) {
     // Échange de la bordure Est
     rank = heatsim->rank_east_peer;
     for (int j = 0; j < grid->height; j++) {
-        cellVector[j] = *grid_get_cell(grid, grid->height, j);
+        cellVector[j] = *grid_get_cell(grid, grid->width-1, j);
     }
     MPI_Send(cellVector, 1, doubleVector, rank, 2, heatsim->communicator);
 
@@ -309,10 +322,10 @@ int heatsim_exchange_borders(heatsim_t* heatsim, grid_t* grid) {
     for (int i = 0; i < grid->width; i++) {
         // gridCell = grid_get_cell_padded(grid, i, 0);
         gridCellDst = grid_get_cell(grid, i, -1);
-        MPI_Recv(gridCellDst, 1, MPI_DOUBLE, rank, i, heatsim->communicator, &status);
+        MPI_Recv(gridCellDst, 1, MPI_DOUBLE, rank, i+grid->width, heatsim->communicator, &status);
+   
     } 
-    // TODO : changer grid_get_cell_padded()
-
+    
     // Réception bordure sud
     rank = heatsim->rank_south_peer;
     for (int i = 0; i < grid->width; i++) {
@@ -345,6 +358,9 @@ int heatsim_exchange_borders(heatsim_t* heatsim, grid_t* grid) {
 int heatsim_send_result(heatsim_t* heatsim, grid_t* grid) {
     assert(grid->padding == 0);
 
+    if (heatsim->rank == 0){
+        return -1;
+    }
     printf("DAVID : %d enters in heatsim_send_result\n", heatsim->rank);
 
     // L’envoie et la réception de la grille finale doit être effectué avec MPI_Send et MPI_Recv.
@@ -362,7 +378,7 @@ int heatsim_send_result(heatsim_t* heatsim, grid_t* grid) {
 
     // TAG 10 
     MPI_Send(grid->data, 1, gridDataType, 0, 10, heatsim->communicator);
-    printf("DAVID : %d out of heatsim_send_results\n", heatsim->rank);
+    // printf("DAVID : %d out of heatsim_send_results\n", heatsim->rank);
     return 1;
 }
 
@@ -397,12 +413,12 @@ int heatsim_receive_results(heatsim_t* heatsim, cart2d_t* cart) {
         int dataFieldLength[1] = { grid->width * grid->height };
         MPI_Type_create_struct(1, dataFieldLength, dataFieldPosition, dataFieldTypes, &gridDataType);
         MPI_Type_commit(&gridDataType);
-        printf("DAVID : 0 is waiting %d message with %d\n", rank, grid->width*grid->height);
+        // printf("DAVID : 0 is waiting %d message with %d\n", rank, grid->width*grid->height);
         // TAG 10 
         MPI_Recv(grid->data, 1, gridDataType, rank, 10, heatsim->communicator, &status);
-        printf("DAVID : %d RECEIVED\n", rank);
+        // printf("DAVID : %d RECEIVED\n", rank);
     }
 
-    printf("DAVID : 0 out of heatsim_receive_results\n");
+    // printf("DAVID : 0 out of heatsim_receive_results\n");
     return 1;
 }

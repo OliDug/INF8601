@@ -280,7 +280,7 @@ int heatsim_run(char* input, char* output, unsigned int dim_x, unsigned int dim_
     grid_destroy(current_grid);
 
 
-    printf("%d sors de la boucle if/else\n", heatsim.rank);
+    // printf("%d sors de la boucle if/else\n", heatsim.rank);
 
     if (cart != NULL) {
         cart2d_destroy(cart);
